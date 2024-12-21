@@ -1,52 +1,40 @@
 <?php
-// レスポンスヘッダーの設定
-header('Content-Type: application/json');
 
+$client_name = $_POST['client_name'];
+$project_name = $_POST['project_name'];
+$deadline = $_POST['deadline'];
+$proposal_amount = $_POST['proposal_amount'];
+
+// 各種項目設定
+$dbn ='mysql:dbname=pj_data;charset=utf8mb4;port=3306;host=localhost';
+$user = 'root';
+$pwd = '';
+
+// DB接続
 try {
-    // POSTデータをJSONとして受け取る
-    $postData = json_decode(file_get_contents('php://input'), true);
-
-    // データベース接続設定
-    $dbn = 'mysql:dbname=pj_data;charset=utf8mb4;port=3306;host=localhost';
-    $user = 'root';
-    $pwd = '';
-
-    // データベース接続
     $pdo = new PDO($dbn, $user, $pwd);
+  } catch (PDOException $e) {
+    echo json_encode(["db error" => "{$e->getMessage()}"]);
+    exit();
+  }
 
-    // SQL実行
-    $sql = "INSERT INTO pj_data_detail (
-    client_name, 
-    project_name, 
-    deadline, 
-    proposal_amount, 
-    created_at, 
-    updated_at
-) VALUES (
-    :client_name, 
-    :project_name, 
-    :deadline, 
-    :proposal_amount, 
-    NOW(), 
-    NOW()
-)";
+// SQL作成&実行
+$sql = 'INSERT INTO pj_data_detail (id, client_name, project_name, deadline, proposal_amount, created_at, updated_at) VALUES (NULL, :client_name, :project_name, :deadline, :proposal_amount, now(), now())';
+$stmt = $pdo->prepare($sql);
 
-    $stmt = $pdo->prepare($sql);
+// バインド変数を設定
+$stmt->bindValue(':client_name', $client_name, PDO::PARAM_STR);
+$stmt->bindValue(':project_name', $project_name, PDO::PARAM_STR);
+$stmt->bindValue(':deadline', $deadline, PDO::PARAM_STR);
+$stmt->bindValue(':proposal_amount', $proposal_amount, PDO::PARAM_INT);
 
-    // パラメータバインド
-    $stmt->bindValue(':client_name', $postData['client_name'], PDO::PARAM_STR);
-    $stmt->bindValue(':project_name', $postData['project_name'], PDO::PARAM_STR);
-    $stmt->bindValue(':deadline', $postData['deadline'], PDO::PARAM_STR);
-    $stmt->bindValue(':proposal_amount', $postData['proposal_amount'], PDO::PARAM_STR); // decimalはSTRとして扱う
-
-    // レスポンスの返却
-    echo json_encode([
-        "success" => $status,
-        "message" => $status ? "登録成功" : "登録失敗"
-    ]);
-} catch (Exception $e) {
-    echo json_encode([
-        "success" => false,
-        "message" => $e->getMessage()
-    ]);
+// SQL実行（実行に失敗すると `sql error ...` が出力される）
+try {
+  $status = $stmt->execute();
+} catch (PDOException $e) {
+  echo json_encode(["sql error" => "{$e->getMessage()}"]);
+  exit();
 }
+
+header('Location:home.php');
+exit();
